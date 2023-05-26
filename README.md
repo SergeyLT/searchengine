@@ -22,13 +22,13 @@ The following technology stack was used to build the Search Engine project:
 ## Web interface
 
 **Dashboard** - tab opens by default. It displays general statistics on all sites, as well as detailed statistics and status for each of the sites
-![Dashboard tab](readme_assets/dashboard.png "Dashboard tab")
+![Dashboard tab](readme_assets/dashboard.PNG "Dashboard tab")
 
 **Management** - on tab there are a search engine control tools: starting and stopping a full indexation (reindexation), as well as the ability to add (update) a separate page on the link
-![Management tab](readme_assets/management.png "Management tab")
+![Management tab](readme_assets/management.PNG "Management tab")
 
 **Search** - on the page there is a search field, dropping a list with websites for search, and when clicking on the “Find” button, the search results are displayed
-![Search tab](readme_assets/search.png "Search tab")
+![Search tab](readme_assets/search.PNG "Search tab")
 
 ## API specification
 | Method | Description | Parameters | Success Result Format | Error Result Format |
