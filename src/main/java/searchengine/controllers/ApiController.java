@@ -1,6 +1,7 @@
 package searchengine.controllers;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,14 +28,18 @@ public class ApiController {
     private final SearchService searchService;
 
     @GetMapping("/statistics")
-    public ResponseEntity<String> statistics() {
+    public ResponseEntity<String> statistics() throws JsonProcessingException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-        String serialized = "";
+        String serialized;
         try {
             serialized = mapper.writeValueAsString(statisticsService.getStatistics());
         } catch (Exception e) {
+            ErrorResponse response = new ErrorResponse();
+            response.setError("Ошибка получения статистики");
+            serialized = mapper.writeValueAsString(response);
+            return new ResponseEntity<>(serialized, HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         return ResponseEntity.ok(serialized);
