@@ -47,13 +47,13 @@ To run the Search Engine project locally follow these steps:
 
 2. Clone the repository to your local machine
 
-3. Build the project using Maven
+3. Build the project using Maven (previously need to get a token to access Skillbox repository)
 
 4. Package jar file, add configuration application.yaml to same folder
 
 5. Install MYSQL Server (8+ version)
 
-6. Create new schema with name searchengine (recomended use characterset utf8mb4 and utf8mb4_bin)
+6. Create new schema with name search_engine (recomended use characterset utf8mb4 and utf8mb4_bin)
 
 7. Start the Spring Boot server:
 
