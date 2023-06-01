@@ -2,7 +2,6 @@ package searchengine.repositories;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 
 import javax.persistence.EntityManager;
@@ -10,7 +9,6 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class LemmaRepositoryCustomImpl implements LemmaRepositoryCustom {
@@ -47,34 +45,7 @@ public class LemmaRepositoryCustomImpl implements LemmaRepositoryCustom {
         logger.info(result.toString());
     }
 
-    @Override
-    public List<String> getSaveLemmasQueriesSingleInsert(Map<String, Integer> lemmas, PageEntity page) {
-        List<String> queryList = new ArrayList<>();
-        if (lemmas == null || lemmas.isEmpty()) {
-            return queryList;
-        }
 
-        String lemmaIndexSQL = "INSERT INTO lemma(frequency,lemma,site_id) VALUES (1,''<lemma>''," +
-                page.getSite().getId() + ") ON DUPLICATE KEY UPDATE frequency = frequency + 1;";
-
-        StringBuilder lemmaIndexQuery = new StringBuilder();
-        for (Map.Entry<String, Integer> lemma : lemmas.entrySet()) {
-            StringBuilder tempQuery = new StringBuilder();
-            tempQuery.append(lemmaIndexQuery.isEmpty() ? "" : "\n")
-                    .append(lemmaIndexSQL.replace("<lemma>", lemma.getKey()));
-
-            int queryLength = lemmaIndexQuery.length() + tempQuery.length();
-            if (queryLength > MAX_QUERY_LENGTH) {
-                queryList.add(lemmaIndexQuery.toString());
-                lemmaIndexQuery = new StringBuilder();
-            }
-
-            lemmaIndexQuery.append(tempQuery);
-        }
-        queryList.add(lemmaIndexQuery.toString());
-
-        return queryList;
-    }
 
     @Override
     public List<String> getSaveLemmasQueriesMasInsert(Set<String> lemmas, SiteEntity site) {

@@ -5,7 +5,7 @@
 <!-- commons lang customization of default Checkstyle behavior -->
 <module name="Checker">
   <module name="BeforeExecutionExclusionFileFilter">
-    <property name="fileNamePattern" value="(.*Repository.*\.java$|.*InputLinksEntity\.java$|.*LemmaEntity\.java$)"/>
+    <property name="fileNamePattern" value="(.*Repository.*\.java$|.*InputSiteIndexingLink\.java$|.*LemmaEntity\.java$)"/>
   </module>
   <property name="severity" value="error"/>
   <module name="FileTabCharacter">

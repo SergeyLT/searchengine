@@ -3,6 +3,7 @@ package searchengine.model;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import searchengine.data.siteindexing.SiteIndexingStatus;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;

@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
-import searchengine.services.search.PageRankEntity;
+import searchengine.data.search.PageRank;
 
 import java.util.List;
 
@@ -35,14 +35,14 @@ public interface IndexRepository extends JpaRepository<IndexEntity, Integer>, In
             ,@Param("pagesId") List<Integer> pagesId, @Param("newPages") int newPages);
 
     @Query("""
-            SELECT new searchengine.services.search.PageRankEntity(i.page,SUM(i.rating))
+            SELECT new searchengine.data.search.PageRank(i.page,SUM(i.rating))
             FROM IndexEntity i
             WHERE i.lemma IN (:lemmas)
             AND i.page.id IN (:pagesId)
             GROUP BY i.page
             ORDER BY SUM(i.rating) DESC
             """)
-    List<PageRankEntity> findPagesWithSumRankByLemmasAndPagesId(@Param("lemmas") List<LemmaEntity> lemmas
+    List<PageRank> findPagesWithSumRankByLemmasAndPagesId(@Param("lemmas") List<LemmaEntity> lemmas
             , @Param("pagesId") List<Integer> pagesId);
 
     @Query("""

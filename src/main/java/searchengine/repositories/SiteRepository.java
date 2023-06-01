@@ -7,18 +7,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.SiteEntity;
-import searchengine.model.SiteIndexingStatus;
+import searchengine.data.siteindexing.SiteIndexingStatus;
 
 import java.util.List;
 
 @Repository
 @Transactional
 public interface SiteRepository extends JpaRepository<SiteEntity, Integer> {
-
-    @Query(value = "DELETE SiteEntity s WHERE s.url = :url")
-    @Modifying
-    int deleteByURL(@Param("url") String url);
-
     @Query(value = """
         UPDATE SiteEntity SET
         status = :status

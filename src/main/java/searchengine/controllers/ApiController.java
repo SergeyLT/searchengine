@@ -8,15 +8,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import searchengine.dto.IndexPageRequest;
-import searchengine.dto.SearchRequest;
-import searchengine.dto.common.CommonResponse;
-import searchengine.dto.common.ErrorResponse;
-import searchengine.dto.common.SuccessResponse;
-import searchengine.dto.common.search.SearchResponse;
-import searchengine.services.search.SearchService;
-import searchengine.services.siteindexing.SiteIndexingService;
-import searchengine.services.statistics.StatisticsService;
+import searchengine.dto.request.IndexPageRequest;
+import searchengine.dto.request.SearchRequest;
+import searchengine.dto.response.CommonResponse;
+import searchengine.dto.response.ErrorResponse;
+import searchengine.dto.response.SuccessResponse;
+import searchengine.dto.response.SearchResponse;
+import searchengine.services.SearchService;
+import searchengine.services.SiteIndexingService;
+import searchengine.services.StatisticsService;
 
 @RestController
 @RequestMapping("/api")
