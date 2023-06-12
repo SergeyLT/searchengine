@@ -97,9 +97,10 @@ public class SnippetCreator {
         int index = stringBuilder.indexOf(oldText);
         while (index != -1) {
             int endIndex = index + oldText.length();
-            if ((index == 0 || !Character.isLetterOrDigit(stringBuilder.charAt(index - 1))) &&
-                    (endIndex == stringBuilder.length()
-                            || !Character.isLetterOrDigit(stringBuilder.charAt(endIndex)))) {
+            boolean isStartWordIndex = index == 0 || !Character.isLetterOrDigit(stringBuilder.charAt(index - 1));
+            boolean isEndWordIndex = endIndex == stringBuilder.length()
+                    || !Character.isLetterOrDigit(stringBuilder.charAt(endIndex));
+            if (isStartWordIndex && isEndWordIndex) {
                 stringBuilder.replace(index, endIndex, newText);
                 result = true;
             }

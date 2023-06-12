@@ -306,17 +306,7 @@ public class SiteIndexingServiceImpl implements SiteIndexingService {
         }
 
         for (String queryLemma : queryLemmas) {
-            isLemmasSaved = false;
-            int tryCount = 0;
-            while (!isLemmasSaved && tryCount < MAX_RETRY_INSERT_COUNT) {
-                if(!allowIndexing.get()) {
-                    return false;
-                }
-
-                isLemmasSaved = insertLemma(page, tryCount, queryLemma);
-                tryCount = !isLemmasSaved ? ++tryCount : tryCount;
-            }
-
+            isLemmasSaved = tryInsertLemma(page, queryLemma);
             if (!isLemmasSaved) {
                 logger.error("Lemmas not saved: "  + page.getPath());
                 return isLemmasSaved;
@@ -324,6 +314,21 @@ public class SiteIndexingServiceImpl implements SiteIndexingService {
         }
 
         return true;
+    }
+
+    private boolean tryInsertLemma(PageEntity page, String queryLemma) throws InterruptedException {
+        boolean isLemmasSaved = false;
+        int tryCount = 0;
+        while (!isLemmasSaved && tryCount < MAX_RETRY_INSERT_COUNT) {
+            if(!allowIndexing.get()) {
+                return false;
+            }
+
+            isLemmasSaved = insertLemma(page, tryCount, queryLemma);
+            tryCount = !isLemmasSaved ? ++tryCount : tryCount;
+        }
+
+        return isLemmasSaved;
     }
 
     private boolean insertLemma(PageEntity page, int tryCount, String queryLemma) throws InterruptedException {
@@ -346,29 +351,38 @@ public class SiteIndexingServiceImpl implements SiteIndexingService {
         int tryCount = 0;
         boolean isIndexSaved = false;
         while (!isIndexSaved && tryCount < MAX_RETRY_INSERT_COUNT) {
-            try {
-                if(!allowIndexing.get()) {
-                    return false;
-                }
+            if (!allowIndexing.get()) {
+                return false;
+            }
 
-                indexRepository.saveIndices(lemmas, page);
-                isIndexSaved = true;
-
-                if (tryCount != 0) {
-                    logger.info("Index add with " + tryCount + " try");
-                }
-            } catch (Exception e) {
-                logger.error("Indices save: " + e.getClass() + ": " + page.getPath() + ": try: " + tryCount);
+            isIndexSaved = insertIndex(page, lemmas, tryCount);
+            if (!isIndexSaved) {
                 tryCount++;
-                Thread.sleep(1000);
             }
         }
+
         if (!isIndexSaved) {
             logger.error("Index not saved: "  + page.getPath());
             return isIndexSaved;
         }
 
         return true;
+    }
+
+    private boolean insertIndex(PageEntity page, Map<String, Integer> lemmas, int tryCount) throws InterruptedException {
+        try {
+            indexRepository.saveIndices(lemmas, page);
+
+            if (tryCount != 0) {
+                logger.info("Index add with " + tryCount + " try");
+            }
+
+            return true;
+        } catch (Exception e) {
+            logger.error("Indices save: " + e.getClass() + ": " + page.getPath() + ": try: " + tryCount);
+            Thread.sleep(1000);
+            return false;
+        }
     }
 
     private boolean isContinueJobAfterSetSiteStatus(InputSiteIndexingLink inputLinks, String error) {

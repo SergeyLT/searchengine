@@ -16,8 +16,6 @@ import searchengine.data.siteindexing.SiteIndexingStatus;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.services.SiteIndexingServiceImpl;
-import searchengine.services.StatisticsService;
 
 import java.time.ZoneOffset;
 import java.util.ArrayList;
