@@ -1536,10 +1536,12 @@ var API = function(){
                         $this.next('.API-error').remove();
                     }
                     var $searchResults = $('.SearchResult'),
+                        $title = $searchResults.find('.SearchResult-title'),
                         $content = $searchResults.find('.SearchResult-content');
                     if (data.offset === 0) {
                         $content.empty();
                     }
+                    $title.html('Found&#32;<span class="SearchResult-amount">0</span>&#32;results');
                     $searchResults.find('.SearchResult-amount').text(result.count);
                     var scroll = $(window).scrollTop();
                     result.data.forEach(function(page){
@@ -1769,8 +1771,16 @@ var API = function(){
                                     data.site = $this.find('[name="site"]').val();
                                 }
                             }
+
+                            var $searchResults = $('.SearchResult'),
+                                $content = $searchResults.find('.SearchResult-content'),
+                                $title = $searchResults.find('.SearchResult-title');
+                            if (data.offset === 0) {
+                               $content.empty();
+                               $title.empty();
+                               $('.SearchResult-footer').addClass('SearchResult-footer_hide');
+                            }
                             break;
-        
                     }
                     sendData(
                         send[$this.data('send')].address,
