@@ -21,6 +21,9 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Integer>, Le
     List<LemmaEntity> findLemmaByLemmasAndSites(@Param("lemmas") Set<String> lemmas
             , @Param("sites") List<SiteEntity> sites);
 
+    @Query("SELECT l.lemma FROM LemmaEntity l WHERE l.lemma IN (:lemmas) ORDER BY l.frequency DESC")
+    List<String>  findLemmaByLemmasOrderByFrequency(@Param("lemmas") Set<String> lemmas);
+
     @Query(value = "DELETE LemmaEntity l")
     @Modifying
     int deleteAllLemmas();

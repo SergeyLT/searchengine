@@ -1,54 +1,100 @@
 package searchengine.utils;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class SnippetCreator {
-    public static final int SNIPPET_MAX_SIZE = 240;
-    public static String getSnippetWithParts(String text, Set<String> lemmasSet, String snippet) throws IOException {
+    public static final int SNIPPET_MAX_SIZE = 180;
+    private static final int SNIPPET_PART = SNIPPET_MAX_SIZE / 6;
+
+    public String getSnippetWithParts(String text, Set<String> lemmasSet, String snippet) throws IOException {
         if (text == null || lemmasSet == null || snippet == null) {
             return  "";
         }
 
-        final int SNIPPET_PART = SNIPPET_MAX_SIZE / 3;
-        int snippetLength = snippet.length();
+        SnippetPreparatoryBuilder preparatoryBuilder = new SnippetPreparatoryBuilder(text, lemmasSet, snippet);
         StringBuilder snippetBuilder = new StringBuilder(snippet);
-        int startIndex = 0;
-        int textLength = text.length();
-        int endIndex = textLength <= SNIPPET_PART ? textLength : getTextPartIndex(text, SNIPPET_PART);
 
-        Set<String> matchingWords = LemmaParser.getInstance().getWordsByLemmas(text, lemmasSet);
+        fillSnippetStringBuilderToMaxLength(text, snippetBuilder, preparatoryBuilder);
 
-        while(snippetLength < SNIPPET_MAX_SIZE && endIndex <= textLength) {
-            String snippetPart = createSnippetPartByLemmas(text.substring(startIndex, endIndex), matchingWords);
-            if (!snippetPart.isEmpty()) {
-                snippetBuilder.append(snippetBuilder.isEmpty() ? "" : "...")
-                        .append(snippetPart);
-            }
-
-            if (endIndex >= textLength) {
-                break;
-            }
-
-            snippetLength = snippetBuilder.length();
-            startIndex = endIndex + 1;
-            endIndex = textLength <= endIndex + SNIPPET_PART ? textLength
-                    : getTextPartIndex(text, endIndex + SNIPPET_PART);
+        for (int i = preparatoryBuilder.searchWordIndex; i < preparatoryBuilder.searchWords.size(); i++) {
+            snippetBuilder.append(i == preparatoryBuilder.searchWordIndex ? "..." : ", ")
+                    .append("<b>" + preparatoryBuilder.searchWords.get(i) + "</b>");
         }
 
         return snippetBuilder.toString();
     }
 
-    public static String getSnippetFullText(String text, Set<String> lemmasSet) throws IOException {
-        if (text == null || lemmasSet == null) {
-            return  "";
+    private void fillSnippetStringBuilderToMaxLength(String text, StringBuilder snippetBuilder
+    ,SnippetPreparatoryBuilder preparatoryBuilder) {
+        int textLength = text.length();
+        int startIndex = preparatoryBuilder.startIndex;
+        int endIndex =preparatoryBuilder.endIndex;
+
+        while(preparatoryBuilder.snippetLength < SNIPPET_MAX_SIZE && endIndex <= textLength
+                && preparatoryBuilder.searchWordIndex < preparatoryBuilder.searchWords.size()) {
+            addSnippetPartToStringBuilder(text.substring(startIndex, endIndex), snippetBuilder, preparatoryBuilder);
+
+            if (endIndex >= textLength || preparatoryBuilder.searchWordIndex >= preparatoryBuilder.searchWords.size()) {
+                break;
+            }
+
+            preparatoryBuilder.snippetLength = snippetBuilder.length();
+
+            startIndex = getSearchedWordStartIndex(text.substring(endIndex + 1,textLength)
+                    , preparatoryBuilder.searchWords.get(preparatoryBuilder.searchWordIndex));
+            while (startIndex == -1 && preparatoryBuilder.searchWordIndex < preparatoryBuilder.searchWords.size() -1) {
+                snippetBuilder.append("...<b>"
+                        + preparatoryBuilder.searchWords.get(preparatoryBuilder.searchWordIndex) + "</b>...");
+                preparatoryBuilder.searchWordIndex++;
+                startIndex = getSearchedWordStartIndex(text.substring(endIndex + 1,textLength)
+                        , preparatoryBuilder.searchWords.get(preparatoryBuilder.searchWordIndex));
+            }
+
+            if (startIndex == -1) {
+                break;
+            }
+
+            startIndex += endIndex + 1;
+            endIndex = textLength <= startIndex + SNIPPET_PART ? textLength
+                    : getTextPartIndex(text.substring(startIndex,textLength), SNIPPET_PART) + startIndex;
         }
-        Set<String> matchingWords = LemmaParser.getInstance().getWordsByLemmas(text, lemmasSet);
-        return createSnippetPartByLemmas(text, matchingWords);
     }
 
-    private static String createSnippetPartByLemmas(String text, Set<String> matchingWords) {
+    private void addSnippetPartToStringBuilder(String text, StringBuilder snippetBuilder
+            ,SnippetPreparatoryBuilder preparatoryBuilder){
+        String snippetPart = createSnippetPartByLemmas(text, preparatoryBuilder.allWords);
+        if (!snippetPart.isEmpty()) {
+            snippetBuilder.append(snippetBuilder.isEmpty() ? "" : "...")
+                    .append(snippetPart);
+        }
+        preparatoryBuilder.searchWordIndex++;
+    }
+
+    private int getSearchedWordStartIndex(String text, String searchWord) {
+        int startIndex = text.indexOf(searchWord);
+        while (startIndex != -1 && !isFullWord(text, searchWord, startIndex)) {
+            int textStartIndex = startIndex + searchWord.length();
+            startIndex = text.substring(textStartIndex).indexOf(searchWord) + textStartIndex;
+        }
+        return startIndex;
+    }
+
+    private boolean isFullWord(String text, String searchWord,int startIndex) {
+        boolean separateWordBefore = startIndex == 0? true : isSeparateChar(text, startIndex-1, startIndex);
+        int textStartIndex = startIndex + searchWord.length();
+        boolean separateWordAfter = startIndex+searchWord.length() == text.length() - 1? true
+                : isSeparateChar(text, textStartIndex, textStartIndex + 1);
+        return separateWordBefore && separateWordAfter;
+    }
+
+    private boolean isSeparateChar(String text, int startIndex, int endIndex) {
+        return Pattern.compile("[^a-zA-Zа-яА-ЯёЁ]").matcher(text.substring(startIndex, endIndex)).matches();
+    }
+
+    private String createSnippetPartByLemmas(String text, Set<String> matchingWords) {
         String snippet = "";
         if (!matchingWords.isEmpty()) {
             snippet = designSnippetText(text, matchingWords);
@@ -56,7 +102,7 @@ public class SnippetCreator {
         return snippet;
     }
 
-    private static String designSnippetText(String text, Set<String> matchingWords) {
+    private String designSnippetText(String text, Set<String> matchingWords) {
         if (text == null || matchingWords == null || text.isEmpty()) {
             return "";
         }
@@ -71,7 +117,7 @@ public class SnippetCreator {
         return isFoundWords ? textBuilder.toString() : "";
     }
 
-    private static int getTextPartIndex(String text, int startIndex) {
+    private int getTextPartIndex(String text, int startIndex) {
         if (text == null) {
             return 0;
         }
@@ -92,7 +138,7 @@ public class SnippetCreator {
         return endIndex;
     }
 
-    public static boolean replaceBuilderText(StringBuilder stringBuilder, String oldText, String newText) {
+    public boolean replaceBuilderText(StringBuilder stringBuilder, String oldText, String newText) {
         boolean result = false;
         int index = stringBuilder.indexOf(oldText);
         while (index != -1) {
@@ -107,5 +153,34 @@ public class SnippetCreator {
             index = stringBuilder.indexOf(oldText, index + newText.length());
         }
         return result;
+    }
+
+    private class SnippetPreparatoryBuilder {
+        private int snippetLength;
+        private int startIndex;
+        private int endIndex;
+        private int searchWordIndex;
+        private List<String> searchWords;
+        private Set<String> allWords;
+
+        public SnippetPreparatoryBuilder(String text, Set<String> lemmasSet, String snippet) throws IOException {
+            snippetLength = snippet.length();
+            int searchWordIndex = 0;
+            int textLength = text.length();
+
+            Map<String,Set<String>> matchingWords = LemmaParser.getInstance().getWordsByLemmas(text, lemmasSet);
+            allWords = matchingWords.values().stream().flatMap(Collection::stream)
+                    .collect(Collectors.toSet());
+            searchWords = new ArrayList<>();
+            for (Set<String> set : matchingWords.values()) {
+                if (!set.isEmpty()) {
+                    searchWords.add(set.iterator().next());
+                }
+            }
+
+            startIndex = getSearchedWordStartIndex(text, searchWords.get(searchWordIndex));
+            endIndex = textLength <= SNIPPET_PART ? textLength
+                    : getTextPartIndex(text.substring(startIndex,textLength), SNIPPET_PART) + startIndex;
+        }
     }
 }

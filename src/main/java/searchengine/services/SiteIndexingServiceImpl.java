@@ -369,7 +369,8 @@ public class SiteIndexingServiceImpl implements SiteIndexingService {
         return true;
     }
 
-    private boolean insertIndex(PageEntity page, Map<String, Integer> lemmas, int tryCount) throws InterruptedException {
+    private boolean insertIndex(PageEntity page, Map<String, Integer> lemmas, int tryCount)
+            throws InterruptedException {
         try {
             indexRepository.saveIndices(lemmas, page);
 

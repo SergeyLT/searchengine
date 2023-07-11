@@ -48,8 +48,9 @@ public class SearchServiceImpl implements SearchService {
             return errorResponse;
         }
 
-        Set<String> lemmas = LemmaParser.getInstance()
+        Map<String,Set<String>> mapLemmas = LemmaParser.getInstance()
                 .getLemmaSet(request.getQuery());
+        Set<String> lemmas = getLemmaSetByMap(mapLemmas);
 
         Tuple2<Integer,List<SearchData>> searchDataInfo = getSearchResult(lemmas, request, sitesList);
         List<SearchData> searchData = searchDataInfo._2;
@@ -62,15 +63,40 @@ public class SearchServiceImpl implements SearchService {
         return response;
     }
 
+    private Set<String> getLemmaSetByMap(Map<String, Set<String>> mapLemmas) {
+        Set<String> lemmaSet = new HashSet<>();
+        for (Map.Entry<String, Set<String>> wordLemmas : mapLemmas.entrySet()) {
+            Set<String> tempSet = wordLemmas.getValue();
+            String lemma;
+
+            if (tempSet.size() > 1) {
+                List<String> lemmas= lemmaRepository.findLemmaByLemmasOrderByFrequency(tempSet);
+                lemma = lemmas.isEmpty() ? tempSet.iterator().next() : lemmas.get(0);
+            } else {
+                lemma = tempSet.iterator().next();
+            }
+
+            lemmaSet.add(lemma);
+        }
+        return lemmaSet;
+    }
+
+
     private Tuple2<Integer,List<SearchData>>  getSearchResult(Set<String> searchLemmas, SearchRequest request
             , List<SiteEntity> sitesList) {
         List<LemmaEntity> lemmas = lemmaRepository.findLemmaByLemmasAndSites(searchLemmas, sitesList);
+
+        deleteNotFullLemmasSites(sitesList, lemmas, searchLemmas.size());
+
         if(lemmas.isEmpty()) {
             return new Tuple2<>(0, new ArrayList<>());
         }
         lemmas.forEach(l -> logger.info(l.getLemma() + ":" + l.getFrequency()+":"+l.getSite().getUrl()));
 
         Map<SiteEntity, List<Integer>> pagesBySite = getPagesBySiteMap(lemmas);
+        if (pagesBySite.isEmpty()) {
+            return new Tuple2<>(0, new ArrayList<>());
+        }
 
         List<Integer> pagesId = pagesBySite.values()
                 .stream()
@@ -87,6 +113,20 @@ public class SearchServiceImpl implements SearchService {
 
         return new Tuple2<>(countPages
                 , createSearchDataList(getPagesSubListByLimits(pagesWithRank, request), lemmas));
+    }
+
+    private void deleteNotFullLemmasSites(List<SiteEntity> sitesList, List<LemmaEntity> lemmas, int searchLemmasCount) {
+        if(lemmas.isEmpty()) {
+            return;
+        }
+
+        for (SiteEntity siteEntity : sitesList) {
+            Set<LemmaEntity> lemmasBySite = lemmas.stream().filter(l -> l.getSite().getId() == siteEntity.getId())
+                    .collect(Collectors.toSet());
+            if (lemmasBySite.size() < searchLemmasCount) {
+                lemmas.removeIf(l -> lemmasBySite.contains(l));
+            }
+        }
     }
 
     private Map<SiteEntity, List<Integer>> getPagesBySiteMap(List<LemmaEntity> lemmas) {
@@ -106,13 +146,14 @@ public class SearchServiceImpl implements SearchService {
             int searchNewPages = isSiteExistInMap? 0 : 1;
             countLemmasBySite = isSiteExistInMap? ++countLemmasBySite : 1;
 
-            pagesId = indexRepository.findPageIdByLemmaAndPages(lemma, pagesId, searchNewPages);
-            boolean isTrimPageList = !isSiteExistInMap && pagesId.size() > SEARCH_PAGE_START_COUNT_LIMIT;
-            pagesId = isTrimPageList ? pagesId.subList(0, SEARCH_PAGE_START_COUNT_LIMIT) : pagesId;
-            boolean isSameCountPages = isSiteExistInMap && pagesBySite.get(site).size() == pagesId.size();
-            boolean isManyPages = countLemmasBySite > SEARCH_LEMMAS_COUNT_FOR_PAGE_LIMIT
-                    && lemma.getFrequency() > SEARCH_PAGE_COUNT_LIMIT;
-            if (pagesId.isEmpty() || isSameCountPages || isManyPages) {
+            pagesId = findPagesId(new PagesIdProperty(pagesId, pagesBySite, site), lemma, searchNewPages);
+
+            if (pagesId.isEmpty()) {
+                stopCheckedSiteId = site.getId();
+                continue;
+            }
+
+            if (isEnoughPages(new PagesIdProperty(pagesId, pagesBySite, site), countLemmasBySite, lemma)) {
                 stopCheckedSiteId = site.getId();
                 continue;
             }
@@ -122,6 +163,32 @@ public class SearchServiceImpl implements SearchService {
         }
 
         return pagesBySite;
+    }
+
+    private List<Integer> findPagesId(PagesIdProperty pagesIdProperty, LemmaEntity lemma, int searchNewPages) {
+        List<Integer> pagesId = indexRepository
+                .findPageIdByLemmaAndPages(lemma, pagesIdProperty.pagesId, searchNewPages);
+        if (pagesId.isEmpty()) {
+            pagesIdProperty.pagesBySite.remove(pagesIdProperty.site);
+            logger.info(pagesIdProperty.site.getUrl() + " is removed cause not found " + lemma.getLemma());
+        }
+        return pagesId;
+    }
+
+    private boolean isEnoughPages(PagesIdProperty pagesIdProperty, int countLemmasBySite, LemmaEntity lemma) {
+        boolean isSiteExistInMap = pagesIdProperty.pagesBySite.containsKey(pagesIdProperty.site);
+
+        boolean isTrimPageList = !isSiteExistInMap && pagesIdProperty.pagesId.size() > SEARCH_PAGE_START_COUNT_LIMIT;
+        while (isTrimPageList && pagesIdProperty.pagesId.size() > SEARCH_PAGE_START_COUNT_LIMIT) {
+            pagesIdProperty.pagesId.remove(pagesIdProperty.pagesId.size() - 1);
+        }
+
+        boolean isSameCountPages = isSiteExistInMap
+                && pagesIdProperty.pagesBySite.get(pagesIdProperty.site).size() == pagesIdProperty.pagesId.size();
+        boolean isManyPages = countLemmasBySite > SEARCH_LEMMAS_COUNT_FOR_PAGE_LIMIT
+                && lemma.getFrequency() > SEARCH_PAGE_COUNT_LIMIT;
+
+        return pagesIdProperty.pagesId.isEmpty() || isSameCountPages || isManyPages;
     }
 
     private List<PageRank> getPagesSubListByLimits(List<PageRank> pagesWithRank, SearchRequest request) {
@@ -157,28 +224,13 @@ public class SearchServiceImpl implements SearchService {
     }
 
     private String createSnippetForPage(PageEntity page, List<LemmaEntity> lemmas) throws IOException {
-        String description = WebPageParser.getDescriptionFromHTML(page.getContent());
-
         Set<String> lemmasSet = lemmas.stream().map(LemmaEntity::getLemma)
                 .collect(Collectors.toSet());
 
         String snippet = "";
-        if (description.length() <= SnippetCreator.SNIPPET_MAX_SIZE) {
-            snippet = SnippetCreator.getSnippetFullText(description, lemmasSet);
-        }
-        if (!snippet.isEmpty()) {
-            return snippet;
-        }
-
-        snippet = SnippetCreator.getSnippetWithParts(description, lemmasSet, "");
-        int snippetLength = snippet.length();
-        if (snippetLength >= SnippetCreator.SNIPPET_MAX_SIZE) {
-            return snippet;
-        }
-
         String pageText = WebPageParser.getTextFromHTML(page.getContent());
 
-        return SnippetCreator.getSnippetWithParts(pageText, lemmasSet, snippet);
+        return new SnippetCreator().getSnippetWithParts(pageText, lemmasSet, snippet);
     }
 
     private String checkRequest(SearchRequest request, List<SiteEntity> sitesList) {
@@ -200,5 +252,9 @@ public class SearchServiceImpl implements SearchService {
 
         sitesList.addAll(indexedSites);
         return "";
+    }
+
+    private record PagesIdProperty(List<Integer> pagesId , Map<SiteEntity
+            , List<Integer>> pagesBySite, SiteEntity site) {
     }
 }

@@ -37,20 +37,35 @@ public class LemmaParser {
         return lemmas;
     }
 
-    public Set<String> getLemmaSet(String text) {
+    public Map<String,Set<String>> getLemmaSet(String text) {
         String[] textArrayRu = arrayContainsWords(text, LanguagePropertyEnum.RU);
         String[] textArrayEn = arrayContainsWords(text, LanguagePropertyEnum.EN);
-        Set<String> lemmaSet = new HashSet<>();
+        Map<String,Set<String>> lemmaMap = new LinkedHashMap<>();
 
         for (String word : textArrayRu) {
-            findLemmaToSet(word, LanguagePropertyEnum.RU, lemmaSet);
+            addLemmaSetToMap(word, LanguagePropertyEnum.RU, lemmaMap);
         }
 
         for (String word : textArrayEn) {
-            findLemmaToSet(word, LanguagePropertyEnum.EN, lemmaSet);
+            addLemmaSetToMap(word, LanguagePropertyEnum.EN, lemmaMap);
         }
 
-        return lemmaSet;
+        return lemmaMap;
+    }
+
+    private void addLemmaSetToMap(String word, LanguagePropertyEnum language, Map<String,Set<String>> lemmaMap) {
+        Set<String> lemmaSet = new HashSet<>();
+        findLemmaToSet(word, language, lemmaSet);
+
+        if (lemmaSet.isEmpty()) {
+            return;
+        }
+
+        if (!lemmaMap.containsKey(word)) {
+            lemmaMap.put(word, new HashSet<>());
+        }
+
+        lemmaMap.get(word).addAll(lemmaSet);
     }
 
     private boolean anyWordBaseBelongToParticle(List<String> wordBaseForms, LanguagePropertyEnum language) {
@@ -130,8 +145,8 @@ public class LemmaParser {
         }
     }
 
-    public Set<String> getWordsByLemmas(String text, Set<String> lemmas) {
-        Set<String> matchingWords = new LinkedHashSet<>();
+    public Map<String,Set<String>> getWordsByLemmas(String text, Set<String> lemmas) {
+        Map<String,Set<String>> matchingWords = new LinkedHashMap<>();
 
         if (text == null || text.isEmpty() ||
                 lemmas == null || lemmas.isEmpty()) {
@@ -163,18 +178,30 @@ public class LemmaParser {
         return matchingWords;
     }
 
-    private void addMatchingWord(Set<String> matchingWords, WordProperty wordProperty, Set<String> langLemmas) {
+    private void addMatchingWord(Map<String,Set<String>> matchingWords
+            , WordProperty wordProperty, Set<String> langLemmas) {
         try {
-            Set<String> currentWordLemmas = new HashSet<>();
+            Set<String> currentWordLemmas = new LinkedHashSet<>();
 
             findLemmaToSet(wordProperty.word.toLowerCase(wordProperty.local)
                     , wordProperty.language, currentWordLemmas);
 
             if (langLemmas.stream().anyMatch(currentWordLemmas::contains)) {
-                matchingWords.add(wordProperty.word);
+                addWordToMatchingSet(currentWordLemmas, matchingWords, wordProperty);
             }
         } catch (WrongCharaterException e) {
         }
+    }
+
+    private void addWordToMatchingSet(Set<String> currentWordLemmas, Map<String
+            , Set<String>> matchingWords, WordProperty wordProperty) {
+        String wordLemma = currentWordLemmas.iterator().next();
+        Set<String> matchingWordsSet = matchingWords.get(wordLemma);
+        if (matchingWordsSet == null) {
+            matchingWordsSet = new LinkedHashSet<>();
+            matchingWords.put(wordLemma, matchingWordsSet);
+        }
+        matchingWordsSet.add(wordProperty.word);
     }
 
     private List<WordProperty> getWordsPropertyList(String text) {
