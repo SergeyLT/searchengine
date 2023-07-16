@@ -10,6 +10,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "jsoup-settings")
 public class JsoupSettings {
-    String userAgent;
-    String referer;
+    private String userAgent;
+    private String referer;
 }

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import searchengine.config.JsoupSettings;
-import searchengine.data.config.Site;
+import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.data.siteindexing.InputSiteIndexingLink;
 import searchengine.data.siteindexing.PageParsingInfo;
@@ -187,7 +187,7 @@ public class SiteIndexingServiceImpl implements SiteIndexingService {
     }
 
     private Set<String> indexPage(InputSiteIndexingLink inputLinks, boolean isSiteIndexing)
-            throws IOException, InterruptedException {
+            throws IOException, InterruptedException, HttpStatusException {
         logger.info("Start indexing page " + inputLinks.link());
 
         PageParsingInfo pageInfo;

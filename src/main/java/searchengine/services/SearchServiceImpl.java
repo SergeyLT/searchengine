@@ -5,6 +5,7 @@ import net.sf.saxon.ma.trie.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import searchengine.config.SearchResultSettings;
 import searchengine.data.search.PageRank;
 import searchengine.dto.request.SearchRequest;
 import searchengine.dto.response.CommonResponse;
@@ -33,10 +34,7 @@ public class SearchServiceImpl implements SearchService {
     private final SiteRepository siteRepository;
     private final LemmaRepository lemmaRepository;
     private final IndexRepository indexRepository;
-    private final int DEFAULT_SEARCH_RESULT_LIMIT = 20;
-    private final int SEARCH_PAGE_COUNT_LIMIT = 2500;
-    private final int SEARCH_PAGE_START_COUNT_LIMIT = 4000;
-    private final int SEARCH_LEMMAS_COUNT_FOR_PAGE_LIMIT = 3;
+    private final SearchResultSettings searchResultSettings;
 
     @Override
     public CommonResponse search(SearchRequest request) throws IOException {
@@ -178,15 +176,16 @@ public class SearchServiceImpl implements SearchService {
     private boolean isEnoughPages(PagesIdProperty pagesIdProperty, int countLemmasBySite, LemmaEntity lemma) {
         boolean isSiteExistInMap = pagesIdProperty.pagesBySite.containsKey(pagesIdProperty.site);
 
-        boolean isTrimPageList = !isSiteExistInMap && pagesIdProperty.pagesId.size() > SEARCH_PAGE_START_COUNT_LIMIT;
-        while (isTrimPageList && pagesIdProperty.pagesId.size() > SEARCH_PAGE_START_COUNT_LIMIT) {
+        int searchPageStartCountLimit = searchResultSettings.getSearchPageStartCountLimit();
+        boolean isTrimPageList = !isSiteExistInMap && pagesIdProperty.pagesId.size() > searchPageStartCountLimit;
+        while (isTrimPageList && pagesIdProperty.pagesId.size() > searchPageStartCountLimit) {
             pagesIdProperty.pagesId.remove(pagesIdProperty.pagesId.size() - 1);
         }
 
         boolean isSameCountPages = isSiteExistInMap
                 && pagesIdProperty.pagesBySite.get(pagesIdProperty.site).size() == pagesIdProperty.pagesId.size();
-        boolean isManyPages = countLemmasBySite > SEARCH_LEMMAS_COUNT_FOR_PAGE_LIMIT
-                && lemma.getFrequency() > SEARCH_PAGE_COUNT_LIMIT;
+        boolean isManyPages = countLemmasBySite > searchResultSettings.getSearchLemmasCountForPageLimit()
+                && lemma.getFrequency() > searchResultSettings.getSearchPageCountLimit();
 
         return pagesIdProperty.pagesId.isEmpty() || isSameCountPages || isManyPages;
     }
@@ -230,7 +229,7 @@ public class SearchServiceImpl implements SearchService {
         String snippet = "";
         String pageText = WebPageParser.getTextFromHTML(page.getContent());
 
-        return new SnippetCreator().getSnippetWithParts(pageText, lemmasSet, snippet);
+        return new SnippetCreator(searchResultSettings).getSnippetWithParts(pageText, lemmasSet, snippet);
     }
 
     private String checkRequest(SearchRequest request, List<SiteEntity> sitesList) {
@@ -247,7 +246,7 @@ public class SearchServiceImpl implements SearchService {
         }
 
         if (request.getLimit() == 0) {
-            request.setLimit(DEFAULT_SEARCH_RESULT_LIMIT);
+            request.setLimit(searchResultSettings.getDefaultSearchResultLimit());
         }
 
         sitesList.addAll(indexedSites);

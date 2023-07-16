@@ -1,13 +1,16 @@
 package searchengine.utils;
 
+import lombok.RequiredArgsConstructor;
+import searchengine.config.SearchResultSettings;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
 public class SnippetCreator {
-    public static final int SNIPPET_MAX_SIZE = 180;
-    private static final int SNIPPET_PART = SNIPPET_MAX_SIZE / 6;
+    private final SearchResultSettings searchResultSettings;
 
     public String getSnippetWithParts(String text, Set<String> lemmasSet, String snippet) throws IOException {
         if (text == null || lemmasSet == null || snippet == null) {
@@ -33,7 +36,7 @@ public class SnippetCreator {
         int startIndex = preparatoryBuilder.startIndex;
         int endIndex =preparatoryBuilder.endIndex;
 
-        while(preparatoryBuilder.snippetLength < SNIPPET_MAX_SIZE && endIndex <= textLength
+        while(preparatoryBuilder.snippetLength < searchResultSettings.getSnippetMaxSize() && endIndex <= textLength
                 && preparatoryBuilder.searchWordIndex < preparatoryBuilder.searchWords.size()) {
             addSnippetPartToStringBuilder(text.substring(startIndex, endIndex), snippetBuilder, preparatoryBuilder);
 
@@ -57,9 +60,10 @@ public class SnippetCreator {
                 break;
             }
 
+            int snippetPartSize = searchResultSettings.getSnippetPartSize();
             startIndex += endIndex + 1;
-            endIndex = textLength <= startIndex + SNIPPET_PART ? textLength
-                    : getTextPartIndex(text.substring(startIndex,textLength), SNIPPET_PART) + startIndex;
+            endIndex = textLength <= startIndex + snippetPartSize ? textLength
+                    : getTextPartIndex(text.substring(startIndex,textLength), snippetPartSize) + startIndex;
         }
     }
 
@@ -178,9 +182,10 @@ public class SnippetCreator {
                 }
             }
 
+            int snippetPartSize = searchResultSettings.getSnippetPartSize();
             startIndex = getSearchedWordStartIndex(text, searchWords.get(searchWordIndex));
-            endIndex = textLength <= SNIPPET_PART ? textLength
-                    : getTextPartIndex(text.substring(startIndex,textLength), SNIPPET_PART) + startIndex;
+            endIndex = textLength <= snippetPartSize ? textLength
+                    : getTextPartIndex(text.substring(startIndex,textLength), snippetPartSize) + startIndex;
         }
     }
 }

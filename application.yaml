@@ -20,7 +20,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
 
 indexing-settings:
@@ -35,5 +35,13 @@ indexing-settings:
 jsoup-settings:
   userAgent: "Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6"
   referer: "http://www.google.com"
+
+search-result-settings:
+  defaultSearchResultLimit: 20
+  searchPageCountLimit: 2500
+  searchPageStartCountLimit: 4000
+  searchLemmasCountForPageLimit: 3
+  snippetMaxSize: 180
+  snippetPartSize: 30
 
 localTimeZone: "+00:00"
